@@ -1,3 +1,4 @@
+// src/app/api/audit/route.ts
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
@@ -5,62 +6,148 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   try {
-    // 1. On essaie de lire les données reçues
-    let body;
+
+    // ── 1. Parse du body ──────────────────────────────────────────────────
+    let body: Record<string, string>;
     try {
       body = await request.json();
     } catch (e) {
-      return NextResponse.json({ error: "Le Front-end n'a pas envoyé un JSON valide." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Body invalide : JSON mal formé", detail: String(e) },
+        { status: 400 }
+      );
     }
 
-    const { prenom, nom, entreprise, email, telephone, url_site } = body;
+    const { firstName, lastName, company, email, phone, url } = body;
 
-    // 2. On vérifie si le client Supabase existe bien
-    if (!supabase) {
-      return NextResponse.json({ error: "Le client Supabase n'est pas initialisé (il vaut undefined)." }, { status: 500 });
-    }
+    if (!url)   return NextResponse.json({ error: 'Champ "url" manquant' }, { status: 400 });
+    if (!email) return NextResponse.json({ error: 'Champ "email" manquant' }, { status: 400 });
 
-    console.log("Tentative d'insertion...", { prenom, nom, email, url_site });
-
-    // 3. On tente l'insertion avec un try/catch dédié pour chasser le bug
-    let newLead;
+    // ── 2. Insertion du lead dans Supabase ────────────────────────────────
+    let leadId: string | null = null;
     try {
-      const { data, error: supabaseError } = await supabase
+      const { data, error: sbError } = await supabase
         .from('leads')
-        .insert([
-          {
-            prenom: prenom || 'Test',
-            nom: nom || 'Test',
-            entreprise: entreprise || null,
-            email: email || 'test@test.fr',
-            telephone: telephone || null,
-            url_site: url_site || 'https://test.com',
-            statut: 'pending'
-          }
-        ])
-        .select()
+        .insert([{
+          prenom:     firstName  || null,
+          nom:        lastName   || null,
+          entreprise: company    || null,
+          email,
+          telephone:  phone      || null,
+          url_site:   url,
+          statut:     'pending',
+        }])
+        .select('id')
         .single();
 
-      if (supabaseError) {
-        return NextResponse.json({ error: "Supabase a refusé l'insertion", details: supabaseError }, { status: 500 });
+      if (sbError) {
+        return NextResponse.json({
+          error:             'Échec insertion Supabase',
+          supabase_code:     sbError.code,
+          supabase_message:  sbError.message,
+          supabase_details:  sbError.details,
+          supabase_hint:     sbError.hint,
+        }, { status: 500 });
       }
-      newLead = data;
-    } catch (sbException: any) {
-      return NextResponse.json({ error: "Crash total pendant l'appel Supabase", details: sbException.message }, { status: 500 });
+
+      leadId = data?.id ?? null;
+      console.log('[audit] Lead inséré, id =', leadId);
+
+    } catch (e) {
+      return NextResponse.json(
+        { error: 'Erreur réseau Supabase (client non joignable)', detail: String(e) },
+        { status: 500 }
+      );
     }
 
-    // 4. Si on arrive ici, l'insertion a marché ! On simule les scores
-    return NextResponse.json({
-      success: true,
-      leadId: newLead?.id,
-      scores: { vitesse: 85, seo: 90, ux: 75, globale: 83 }
-    });
+    // ── 3. Appel Google PageSpeed Insights ────────────────────────────────
+    const PAGESPEED_KEY = process.env.PAGESPEED_API_KEY;
+    let scores = { speed: 0, seo: 0, ux: 0 };
 
-  } catch (globalError: any) {
+    if (!PAGESPEED_KEY) {
+      // Pas de clé → scores simulés, on continue sans crasher
+      console.warn('[audit] PAGESPEED_API_KEY absent — scores simulés');
+      scores = {
+        speed: Math.floor(Math.random() * 40) + 45,
+        seo:   Math.floor(Math.random() * 30) + 55,
+        ux:    Math.floor(Math.random() * 35) + 50,
+      };
+    } else {
+      try {
+        const psUrl =
+          `https://www.googleapis.com/pagespeedonline/v5/runPagespeed` +
+          `?url=${encodeURIComponent(url)}` +
+          `&strategy=mobile` +
+          `&key=${PAGESPEED_KEY}` +
+          `&category=PERFORMANCE` +
+          `&category=SEO` +
+          `&category=ACCESSIBILITY`;
+
+        console.log('[audit] Appel PageSpeed pour :', url);
+        const psRes = await fetch(psUrl);
+
+        if (!psRes.ok) {
+          const raw = await psRes.text();
+          return NextResponse.json({
+            error:         'PageSpeed API a répondu avec une erreur HTTP',
+            http_status:   psRes.status,
+            response_body: raw.slice(0, 600),
+          }, { status: 500 });
+        }
+
+        const psData = await psRes.json();
+
+        // Vérification que Lighthouse a bien tourné
+        const cats = psData?.lighthouseResult?.categories;
+        if (!cats) {
+          return NextResponse.json({
+            error:   'Réponse PageSpeed inattendue : pas de lighthouseResult.categories',
+            raw:     JSON.stringify(psData).slice(0, 600),
+          }, { status: 500 });
+        }
+
+        scores = {
+          speed: Math.round((cats.performance?.score  ?? 0) * 100),
+          seo:   Math.round((cats.seo?.score          ?? 0) * 100),
+          ux:    Math.round((cats.accessibility?.score ?? 0) * 100),
+        };
+
+        console.log('[audit] Scores PageSpeed :', scores);
+
+      } catch (e) {
+        return NextResponse.json(
+          { error: "Erreur réseau lors de l'appel PageSpeed", detail: String(e) },
+          { status: 500 }
+        );
+      }
+    }
+
+    // ── 4. Mise à jour des scores dans Supabase ───────────────────────────
+    if (leadId) {
+      try {
+        const { error: updateError } = await supabase
+          .from('leads')
+          .update({ scores, statut: 'done' })
+          .eq('id', leadId);
+
+        if (updateError) {
+          // Non bloquant : on log mais on répond quand même
+          console.error('[audit] Échec update scores :', updateError.message);
+        }
+      } catch (e) {
+        console.error('[audit] Erreur réseau update Supabase :', e);
+      }
+    }
+
+    // ── 5. Réponse finale ─────────────────────────────────────────────────
+    return NextResponse.json({ success: true, leadId, scores }, { status: 201 });
+
+  } catch (e: unknown) {
+    const err = e instanceof Error ? e : new Error(String(e));
     return NextResponse.json({
-      error: "Erreur critique inconnue dans la route",
-      details: globalError.message,
-      stack: globalError.stack
+      error:  'Erreur critique inconnue dans la route',
+      detail: err.message,
+      stack:  err.stack,
     }, { status: 500 });
   }
 }

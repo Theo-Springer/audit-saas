@@ -87,14 +87,14 @@ function InputField({
   return (
     <div className="flex flex-col gap-1.5">
       <label htmlFor={name} className="text-sm font-medium text-slate-300">
-        {label}{required && <span className="ml-1 text-violet-400">*</span>}
+        {label}{required && <span className="ml-1 text-orange-500">*</span>}
       </label>
       <input
         id={name} name={name} type={type} placeholder={placeholder}
         value={value} onChange={onChange} required={required}
         className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-slate-500
           outline-none transition-all duration-200
-          focus:border-violet-500 focus:bg-white/8 focus:ring-2 focus:ring-violet-500/20"
+          focus:border-orange-500 focus:ring-orange-500/20 focus:ring-2 focus:ring-orange-500/20"
       />
     </div>
   )
@@ -177,25 +177,25 @@ export default function HomePage() {
   // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <main className="min-h-screen bg-[#080C14] text-white selection:bg-violet-500/30">
+    <main className="min-h-screen bg-[#000000] text-white selection:bg-lime-500/20 font-sans">
 
       {/* ── Background glow ── */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute -top-40 left-1/2 h-[600px] w-[900px] -translate-x-1/2 rounded-full bg-violet-600/10 blur-[120px]" />
-        <div className="absolute bottom-0 right-0 h-[400px] w-[600px] rounded-full bg-indigo-600/8 blur-[100px]" />
+        <div className="absolute -top-40 left-1/2 h-[500px] w-[800px] -translate-x-1/2 rounded-full bg-orange-500/10 blur-[130px]" />
+        <div className="absolute bottom-0 right-0 h-[300px] w-[500px] rounded-full bg-neutral-900/40 blur-[100px]" />
       </div>
 
       <div className="relative mx-auto max-w-2xl px-4 py-16">
 
         {/* ── Header ── */}
         <header className="mb-12 text-center">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-1.5 text-xs font-medium text-violet-300">
-            <span className="h-1.5 w-1.5 rounded-full bg-violet-400 animate-pulse" />
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-orange-500/30 bg-orange-500/10 px-4 py-1.5 text-xs font-medium text-orange-300">
+            <span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />
             Audit gratuit · Résultats en 30 secondes
           </div>
           <h1 className="mt-4 text-4xl font-bold tracking-tight text-white sm:text-5xl">
             Votre site mérite{' '}
-            <span className="bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r bg-emerald-500 to-orange-600 bg-clip-text text-transparent">
               mieux.
             </span>
           </h1>
@@ -211,7 +211,7 @@ export default function HomePage() {
         {state === 'form' && (
           <form
             onSubmit={handleSubmit}
-            className="rounded-2xl border border-white/8 bg-white/3 p-8 backdrop-blur-md shadow-2xl shadow-black/40"
+            className="rounded-2xl border border-white/8 bg-neutral-900/40 p-8 backdrop-blur-md shadow-2xl shadow-black/40"
           >
             {error && (
               <div className="mb-6 flex items-start gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
@@ -231,10 +231,10 @@ export default function HomePage() {
 
             <button
               type="submit"
-              className="mt-8 w-full rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-6 py-4 text-sm font-semibold text-white
-                shadow-lg shadow-violet-600/25 transition-all duration-200
-                hover:from-violet-500 hover:to-indigo-500 hover:shadow-violet-500/30 hover:-translate-y-0.5
-                active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+              className="mt-8 w-full rounded-xl bg-emerald-700 shadow-emerald-950/20 hover:bg-emerald-600 text-white px-6 py-4 text-sm font-semibold text-white
+                shadow-lg shadow-lime-600/25 transition-all duration-200
+                hover:from-lime-500 hover:to-lime-600 hover:shadow-lime-500/30 hover:-translate-y-0.5
+                active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-500"
             >
               Lancer l'audit gratuit →
             </button>
@@ -249,7 +249,7 @@ export default function HomePage() {
             STATE 2 — LOADING
         ══════════════════════════════════════════════════════════════════════ */}
         {state === 'loading' && (
-          <div className="rounded-2xl border border-white/8 bg-white/3 p-12 text-center backdrop-blur-md shadow-2xl shadow-black/40">
+          <div className="rounded-2xl border border-white/8 bg-neutral-900/40 p-12 text-center backdrop-blur-md shadow-2xl shadow-black/40">
 
             {/* Spinner */}
             <div className="relative mx-auto mb-8 h-20 w-20">
@@ -314,8 +314,8 @@ export default function HomePage() {
             </div>
 
             {/* CTA */}
-            <div className="rounded-2xl border border-violet-500/20 bg-gradient-to-br from-violet-900/30 to-indigo-900/20 p-8 text-center backdrop-blur-md">
-              <p className="text-xs font-medium uppercase tracking-widest text-violet-400">Passez à l'action</p>
+            <div className="rounded-2xl border border-orange-500/20 bg-gradient-to-br from-orange-900/30 to-orange-900/20 p-8 text-center backdrop-blur-md">
+              <p className="text-xs font-medium uppercase tracking-widest text-orange-400">Passez à l'action</p>
               <h2 className="mt-3 text-xl font-bold text-white sm:text-2xl">
                 Prêt à améliorer ces scores ?
               </h2>
@@ -324,10 +324,10 @@ export default function HomePage() {
                 sans engagement.
               </p>
               <a
-                href="#"
-                className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-8 py-4
-                  text-sm font-semibold text-white shadow-lg shadow-violet-600/25 transition-all duration-200
-                  hover:from-violet-500 hover:to-indigo-500 hover:-translate-y-0.5 hover:shadow-violet-500/30"
+                href="https://rewind-studio.vercel.app/"
+                className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-orange-600 to-orange-600 px-8 py-4
+                  text-sm font-semibold text-white shadow-lg shadow-orange-600/25 transition-all duration-200
+                  hover:from-orange-500 hover:to-orange-600 hover:-translate-y-0.5 hover:shadow-orange-500/30"
               >
                 Prendre un rendez-vous gratuit
                 <span aria-hidden>→</span>
