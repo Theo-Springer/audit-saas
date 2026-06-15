@@ -85,32 +85,30 @@ export async function POST(request: Request) {
 
     // ── 3. Insertion Supabase NON-BLOQUANTE ───────────────────────────────
     // On n'attend pas Supabase pour répondre à l'utilisateur
-    supabase
-      .from('leads')
-      .insert([{
-        prenom:     firstName || null,
-        nom:        lastName  || null,
-        entreprise: company   || null,
-        email,
-        telephone:  phone     || null,
-        url_site:   url,
-        scores,
-        statut:     'done',
-      }])
-      .select('id')
-      .single()
-      .then(({ data, error: sbError }) => {
-        if (sbError) {
-          console.error('[audit] Échec insertion Supabase (non-bloquant) :',
-            sbError.code, sbError.message, sbError.details, sbError.hint);
-        } else {
-          console.log('[audit] Lead inséré, id =', data?.id);
-        }
-      })
-      
-      .catch((e) => {
-        console.error('[audit] Erreur réseau Supabase (non-bloquant) :', e);
-      });
+  Promise.resolve(
+  supabase
+    .from('leads')
+    .insert([{
+      prenom:     firstName || null,
+      nom:        lastName  || null,
+      entreprise: company   || null,
+      email,
+      telephone:  phone     || null,
+      url_site:   url,
+      scores,
+      statut:     'done',
+    }])
+    .select('id')
+    .single()
+).then(({ data, error: sbError }) => {
+  if (sbError) {
+    console.error('[audit] Échec insertion Supabase :', sbError.message);
+  } else {
+    console.log('[audit] Lead inséré, id =', data?.id);
+  }
+}).catch((e) => {
+  console.error('[audit] Erreur réseau Supabase :', e);
+});
 
     // ── 4. Réponse immédiate avec les scores ──────────────────────────────
     return NextResponse.json({ success: true, scores }, { status: 200 });
