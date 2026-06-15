@@ -107,6 +107,7 @@ export async function POST(request: Request) {
           console.log('[audit] Lead inséré, id =', data?.id);
         }
       })
+      
       .catch((e) => {
         console.error('[audit] Erreur réseau Supabase (non-bloquant) :', e);
       });
