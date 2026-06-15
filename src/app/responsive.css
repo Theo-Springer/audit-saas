@@ -1,0 +1,82 @@
+/* ─── Tablet (≤ 768px) ───────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .rw-nav         { padding: 1.5rem 2rem !important; }
+  .rw-hero        { padding: 4.5rem 2rem 3.5rem !important; }
+  .rw-audit       { padding: 0 2rem 6rem !important; }
+  .rw-method-inner { padding: 4.5rem 2rem !important; }
+  .rw-footer      { padding: 1.5rem 2rem !important; }
+
+  /* Methodology: 3 colonnes → 1 colonne dès la tablette */
+  .rw-method-grid { grid-template-columns: 1fr !important; }
+  .rw-method-col {
+    padding: 2.5rem 0 0 0 !important;
+    border-left: none !important;
+    border-top: 1px solid rgba(245, 243, 238, 0.1) !important;
+  }
+  .rw-method-col:first-child {
+    padding-top: 0 !important;
+    border-top: none !important;
+  }
+}
+
+/* ─── Mobile (≤ 480px) ───────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  /* Nav */
+  .rw-nav       { padding: 1.25rem 1.25rem !important; }
+  .rw-nav-links { gap: 1.25rem !important; }
+
+  /* Hero */
+  .rw-hero { padding: 3rem 1.25rem 2.5rem !important; }
+
+  .rw-hero-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0 !important;
+    align-items: start !important;
+  }
+
+  /* Stat block: séparation horizontale → verticale */
+  .rw-hero-stat {
+    border-left: none !important;
+    border-top: 1px solid var(--rule) !important;
+    padding-left: 0 !important;
+    padding-top: 1.5rem !important;
+    margin-top: 2rem !important;
+    min-width: unset !important;
+  }
+
+  /* Audit widget */
+  .rw-audit { padding: 0 1.25rem 4rem !important; }
+
+  /* Formulaire URL : input + bouton → colonne */
+  .rw-audit-form {
+    flex-direction: column !important;
+    border-bottom: none !important;
+  }
+  .rw-audit-form input {
+    border-bottom: 1px solid var(--ink) !important;
+  }
+  .rw-audit-form button {
+    margin-top: 1rem !important;
+    padding: 1rem 1.5rem !important;
+    width: 100% !important;
+  }
+
+  /* Methodology */
+  .rw-method-inner { padding: 3.5rem 1.25rem !important; }
+  .rw-method-header {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+    margin-bottom: 2.5rem !important;
+  }
+
+  /* Footer */
+  .rw-footer {
+    padding: 1.5rem 1.25rem !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  /* Gate modal */
+  .rw-modal      { padding: 1.5rem 1.25rem !important; }
+  .rw-modal-grid { grid-template-columns: 1fr !important; }
+}

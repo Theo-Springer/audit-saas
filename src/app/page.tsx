@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import './responsive.css'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -156,7 +157,7 @@ function GateModal({
       background: 'rgba(245,243,238,0.92)',
       backdropFilter: 'blur(8px)',
     }}>
-      <div style={{
+      <div className="rw-modal" style={{
         width: '100%', maxWidth: '480px',
         background: 'var(--paper)',
         border: '1px solid var(--rule)',
@@ -198,7 +199,7 @@ function GateModal({
 
         {/* Formulaire */}
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+          <div className="rw-modal-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
             <InputField label="Prénom" name="firstName" placeholder="Jean" value={lead.firstName} onChange={handleChange} required />
             <InputField label="Nom" name="lastName" placeholder="Dupont" value={lead.lastName} onChange={handleChange} required />
           </div>
@@ -420,7 +421,7 @@ export default function HomePage() {
         {/* ══════════════════════════════════════════════════════════════════
             NAVIGATION
         ══════════════════════════════════════════════════════════════════ */}
-        <nav style={{
+        <nav className="rw-nav" style={{
           maxWidth: '1200px', margin: '0 auto',
           padding: '2rem 3rem',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -429,7 +430,7 @@ export default function HomePage() {
           <span style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: 'var(--ink)', fontStyle: 'italic' }}>
             Rewind<span style={{ fontStyle: 'normal', fontFamily: 'var(--font-body)', fontWeight: 300, fontSize: '1rem' }}> Insights</span>
           </span>
-          <div style={{ display: 'flex', gap: '2.5rem' }}>
+          <div className="rw-nav-links" style={{ display: 'flex', gap: '2.5rem' }}>
             {['Méthode', 'Analyser', 'Contact'].map(link => (
               <a
                 key={link}
@@ -451,8 +452,8 @@ export default function HomePage() {
         {/* ══════════════════════════════════════════════════════════════════
             HERO — layout asymétrique : grand titre à gauche, stat à droite
         ══════════════════════════════════════════════════════════════════ */}
-        <section style={{ maxWidth: '1200px', margin: '0 auto', padding: '7rem 3rem 6rem' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '4rem', alignItems: 'end' }}>
+        <section className="rw-hero" style={{ maxWidth: '1200px', margin: '0 auto', padding: '7rem 3rem 6rem' }}>
+          <div className="rw-hero-grid" style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '4rem', alignItems: 'end' }}>
 
             {/* Titre */}
             <div>
@@ -485,7 +486,7 @@ export default function HomePage() {
             </div>
 
             {/* Stat isolée à droite — signature visuelle */}
-            <div style={{
+            <div className="rw-hero-stat" style={{
               borderLeft: '1px solid var(--rule)',
               paddingLeft: '3rem',
               paddingBottom: '0.5rem',
@@ -515,7 +516,7 @@ export default function HomePage() {
         {/* ══════════════════════════════════════════════════════════════════
             WIDGET D'AUDIT — ancre #audit
         ══════════════════════════════════════════════════════════════════ */}
-        <section id="audit" style={{
+        <section id="audit" className="rw-audit" style={{
           maxWidth: '1200px', margin: '0 auto',
           padding: '0 3rem 8rem',
         }}>
@@ -532,7 +533,7 @@ export default function HomePage() {
               </p>
 
               <form onSubmit={handleStartAudit}>
-                <div style={{ display: 'flex', gap: '0', alignItems: 'stretch', borderBottom: '1px solid var(--ink)', paddingBottom: '0' }}>
+                <div className="rw-audit-form" style={{ display: 'flex', gap: '0', alignItems: 'stretch', borderBottom: '1px solid var(--ink)', paddingBottom: '0' }}>
                   <input
                     type="url" required
                     placeholder="https://votre-site.fr"
@@ -733,10 +734,10 @@ export default function HomePage() {
             CE QUE NOUS MESURONS — layout éditorial 2 colonnes
         ══════════════════════════════════════════════════════════════════ */}
         <section style={{ borderTop: '1px solid var(--rule)', background: 'var(--ink)', color: 'var(--paper)' }}>
-          <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '6rem 3rem' }}>
+          <div className="rw-method-inner" style={{ maxWidth: '1200px', margin: '0 auto', padding: '6rem 3rem' }}>
 
             {/* En-tête de section */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '4rem', marginBottom: '5rem', alignItems: 'end' }}>
+            <div className="rw-method-header" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '4rem', marginBottom: '5rem', alignItems: 'end' }}>
               <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(245,243,238,0.4)' }}>
                 Méthodologie
               </p>
@@ -747,7 +748,7 @@ export default function HomePage() {
             </div>
 
             {/* Trois blocs en grille horizontale séparés par des lignes verticales */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0' }}>
+            <div className="rw-method-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0' }}>
               {[
                 {
                   label: 'Vitesse',
@@ -776,6 +777,7 @@ export default function HomePage() {
               ].map(({ label, metrics }, i) => (
                 <div
                   key={label}
+                  className="rw-method-col"
                   style={{
                     padding: '0 2.5rem',
                     borderLeft: i === 0 ? 'none' : '1px solid rgba(245,243,238,0.1)',
@@ -811,7 +813,7 @@ export default function HomePage() {
             FOOTER
         ══════════════════════════════════════════════════════════════════ */}
         <footer style={{ borderTop: '1px solid var(--rule)' }}>
-          <div style={{
+          <div className="rw-footer" style={{
             maxWidth: '1200px', margin: '0 auto',
             padding: '2rem 3rem',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem',
