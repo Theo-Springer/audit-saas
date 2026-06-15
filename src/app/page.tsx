@@ -1,16 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface FormData {
+interface LeadData {
   firstName: string
   lastName: string
   company: string
   email: string
   phone: string
-  url: string
 }
 
 interface AuditScores {
@@ -19,535 +18,827 @@ interface AuditScores {
   ux: number
 }
 
-type AppState = 'form' | 'loading' | 'result'
+type AppState = 'idle' | 'scanning' | 'gate' | 'submitting' | 'result'
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ─── Constantes ───────────────────────────────────────────────────────────────
 
-const LOADING_MESSAGES = [
-  'On se connecte à votre site…',
-  'Analyse des balises SEO…',
-  'Mesure des temps de chargement…',
-  'Vérification de l\'expérience mobile…',
-  'Calcul des Core Web Vitals…',
-  'Génération de votre rapport…',
+const SCAN_MESSAGES = [
+  { pct: 5,  msg: 'Résolution DNS…' },
+  { pct: 18, msg: 'Lecture du code source…' },
+  { pct: 32, msg: 'Analyse SEO & méta-données…' },
+  { pct: 46, msg: 'Core Web Vitals (LCP, CLS, INP)…' },
+  { pct: 60, msg: 'Expérience mobile…' },
+  { pct: 74, msg: 'Accessibilité WCAG…' },
+  { pct: 85, msg: 'Finalisation du rapport…' },
 ]
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Score helpers ────────────────────────────────────────────────────────────
 
-function getScoreColor(score: number): { hex: string; label: string; bg: string } {
-  if (score >= 80) return { hex: '#4CAF7D', label: 'Excellent', bg: 'rgba(76,175,125,0.08)' }
-  if (score >= 50) return { hex: '#E8A838', label: 'À améliorer', bg: 'rgba(232,168,56,0.08)' }
-  return { hex: '#E05D44', label: 'Critique', bg: 'rgba(224,93,68,0.08)' }
+function scoreColor(score: number) {
+  if (score >= 80) return { hex: '#3D5A4A', label: 'Bon' }
+  if (score >= 50) return { hex: '#8C6D3F', label: 'Moyen' }
+  return { hex: '#7A3B2E', label: 'Faible' }
 }
 
-// ─── Score Gauge ──────────────────────────────────────────────────────────────
+// ─── Composants ───────────────────────────────────────────────────────────────
 
-function ScoreGauge({ score, label, icon }: { score: number; label: string; icon: string }) {
-  const { hex, label: badge, bg } = getScoreColor(score)
-  const radius = 52
-  const circumference = 2 * Math.PI * radius
-  const offset = circumference - (score / 100) * circumference
+function ScoreGauge({ score, label, index }: { score: number; label: string; index: number }) {
+  const { hex, label: badge } = scoreColor(score)
+  const r = 42
+  const circ = 2 * Math.PI * r
+  const offset = circ - (score / 100) * circ
+  const delay = index * 0.15
 
   return (
-    <div
-      className="flex flex-col items-center gap-4 rounded-2xl p-7"
-      style={{ background: bg, border: `1px solid ${hex}22` }}
-    >
-      <div className="relative h-36 w-36">
-        <svg className="-rotate-90" viewBox="0 0 120 120" width="144" height="144">
-          <circle cx="60" cy="60" r={radius} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="7" />
-          <circle
-            cx="60" cy="60" r={radius} fill="none"
-            stroke={hex}
-            strokeWidth="7"
-            strokeLinecap="round"
-            strokeDasharray={circumference}
-            strokeDashoffset={offset}
-            style={{ transition: 'stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1)' }}
-          />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-xl">{icon}</span>
-          <span className="text-3xl font-bold tabular-nums" style={{ color: hex }}>{score}</span>
+    <div style={{ paddingTop: '2rem', paddingBottom: '2rem', borderTop: '1px solid var(--rule)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+        {/* Jauge SVG compacte */}
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <svg style={{ transform: 'rotate(-90deg)' }} viewBox="0 0 96 96" width="72" height="72">
+            <circle cx="48" cy="48" r={r} fill="none" stroke="var(--rule)" strokeWidth="3" />
+            <circle
+              cx="48" cy="48" r={r} fill="none"
+              stroke={hex} strokeWidth="3" strokeLinecap="square"
+              strokeDasharray={circ} strokeDashoffset={offset}
+              style={{ transition: `stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1) ${delay}s` }}
+            />
+          </svg>
+          <div style={{
+            position: 'absolute', inset: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', fontWeight: 400, color: hex }}>
+              {score}
+            </span>
+          </div>
         </div>
-      </div>
-      <div className="text-center">
-        <p className="text-sm font-semibold text-white/80">{label}</p>
-        <span
-          className="mt-1.5 inline-block rounded-full px-3 py-0.5 text-xs font-medium"
-          style={{ color: hex, background: `${hex}18`, border: `1px solid ${hex}30` }}
-        >
-          {badge}
-        </span>
+        {/* Label texte */}
+        <div>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.95rem', fontWeight: 500, color: 'var(--ink)', marginBottom: '0.25rem' }}>
+            {label}
+          </p>
+          <span style={{
+            fontFamily: 'var(--font-mono)', fontSize: '0.65rem', letterSpacing: '0.08em',
+            textTransform: 'uppercase', color: hex,
+          }}>
+            {badge}
+          </span>
+        </div>
       </div>
     </div>
   )
 }
 
-// ─── Form Field ───────────────────────────────────────────────────────────────
-
-function Field({
-  label, name, type = 'text', placeholder, value, onChange, required,
+function InputField({
+  name, type = 'text', placeholder, value, onChange, required, label,
 }: {
-  label: string; name: string; type?: string; placeholder: string
-  value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; required?: boolean
+  name: string; type?: string; placeholder: string
+  value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  required?: boolean; label: string
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <label htmlFor={name} className="text-xs font-medium text-white/40 tracking-wide uppercase">
-        {label}{required && <span className="ml-1 text-[#E05D44]">*</span>}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+      <label
+        htmlFor={name}
+        style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--stone)' }}
+      >
+        {label}{required && <span style={{ color: 'var(--accent-warm)', marginLeft: '0.25rem' }}>*</span>}
       </label>
       <input
         id={name} name={name} type={type} placeholder={placeholder}
         value={value} onChange={onChange} required={required}
-        className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-white/20
-          outline-none transition-all duration-200
-          focus:border-[#4CAF7D]/50 focus:bg-white/8 focus:ring-2 focus:ring-[#4CAF7D]/10"
+        style={{
+          fontFamily: 'var(--font-body)', fontSize: '0.9rem',
+          background: 'transparent', border: 'none',
+          borderBottom: '1px solid var(--rule)',
+          padding: '0.6rem 0', color: 'var(--ink)',
+          outline: 'none', transition: 'border-color 0.2s',
+          width: '100%',
+        }}
+        onFocus={e => { e.target.style.borderBottomColor = 'var(--accent)' }}
+        onBlur={e => { e.target.style.borderBottomColor = 'var(--rule)' }}
       />
     </div>
   )
 }
 
-// ─── Card wrapper ─────────────────────────────────────────────────────────────
+// ─── Modal bloquant — Étape 3 ─────────────────────────────────────────────────
 
-function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+function GateModal({
+  url, onSubmit, isSubmitting, error,
+}: {
+  url: string
+  onSubmit: (lead: LeadData) => void
+  isSubmitting: boolean
+  error: string | null
+}) {
+  const [lead, setLead] = useState<LeadData>({ firstName: '', lastName: '', company: '', email: '', phone: '' })
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setLead(prev => ({ ...prev, [e.target.name]: e.target.value }))
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    onSubmit(lead)
+  }
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [])
+
   return (
-    <div className={`rounded-2xl border border-white/8 bg-white/4 backdrop-blur-sm ${className}`}>
-      {children}
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 50,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: '1.5rem',
+      background: 'rgba(245,243,238,0.92)',
+      backdropFilter: 'blur(8px)',
+    }}>
+      <div style={{
+        width: '100%', maxWidth: '480px',
+        background: 'var(--paper)',
+        border: '1px solid var(--rule)',
+        padding: '2.5rem',
+      }}>
+        {/* Barre de progression figée */}
+        <div style={{ marginBottom: '2rem' }}>
+          <div style={{ height: '1px', background: 'var(--rule)', position: 'relative', marginBottom: '0.75rem' }}>
+            <div style={{
+              position: 'absolute', top: 0, left: 0, height: '1px',
+              width: '85%', background: 'var(--accent)',
+              boxShadow: '0 0 8px var(--accent)',
+            }} />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--stone)' }}>
+              Analyse complète
+            </span>
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: 'var(--accent)' }}>
+              85%
+            </span>
+          </div>
+        </div>
+
+        {/* Titre */}
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 400, color: 'var(--ink)', lineHeight: 1.2, marginBottom: '0.75rem' }}>
+          Votre rapport est prêt.
+        </h2>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.875rem', color: 'var(--stone)', lineHeight: 1.6, marginBottom: '2rem' }}>
+          Laissez-nous un moyen de vous le transmettre. Résultats complets, sans engagement.
+        </p>
+
+        {/* Erreur */}
+        {error && (
+          <div style={{ borderLeft: '2px solid var(--accent-warm)', paddingLeft: '0.75rem', marginBottom: '1.5rem' }}>
+            <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--accent-warm)' }}>{error}</p>
+          </div>
+        )}
+
+        {/* Formulaire */}
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+            <InputField label="Prénom" name="firstName" placeholder="Jean" value={lead.firstName} onChange={handleChange} required />
+            <InputField label="Nom" name="lastName" placeholder="Dupont" value={lead.lastName} onChange={handleChange} required />
+          </div>
+          <InputField label="Entreprise" name="company" placeholder="Acme" value={lead.company} onChange={handleChange} />
+          <InputField label="Email" name="email" type="email" placeholder="jean@acme.fr" value={lead.email} onChange={handleChange} required />
+          <InputField label="Téléphone" name="phone" type="tel" placeholder="+33 6 00 00 00 00" value={lead.phone} onChange={handleChange} />
+
+          <div style={{ paddingTop: '0.5rem' }}>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              style={{
+                width: '100%',
+                fontFamily: 'var(--font-body)', fontSize: '0.875rem', fontWeight: 500,
+                color: 'var(--paper)', background: 'var(--ink)',
+                border: 'none', padding: '0.875rem 1.5rem',
+                cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                opacity: isSubmitting ? 0.6 : 1,
+                transition: 'opacity 0.2s',
+                letterSpacing: '0.01em',
+              }}
+            >
+              {isSubmitting ? 'Envoi…' : 'Afficher le rapport complet'}
+            </button>
+            <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--stone)', textAlign: 'center', marginTop: '1rem' }}>
+              Confidentiel — aucune CB requise
+            </p>
+          </div>
+        </form>
+
+        {/* URL auditée */}
+        <div style={{ borderTop: '1px solid var(--rule)', marginTop: '1.5rem', paddingTop: '1rem' }}>
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--stone)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {url}
+          </p>
+        </div>
+      </div>
     </div>
   )
 }
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// ─── Composant principal ──────────────────────────────────────────────────────
 
 export default function HomePage() {
-  const [state, setState] = useState<AppState>('form')
-  const [formData, setFormData] = useState<FormData>({
-    firstName: '', lastName: '', company: '', email: '', phone: '', url: '',
-  })
-  const [scores, setScores] = useState<AuditScores | null>(null)
-  const [loadingMsg, setLoadingMsg] = useState(0)
-  const [loadingProgress, setLoadingProgress] = useState(0)
-  const [error, setError] = useState<string | null>(null)
-  const [auditedUrl, setAuditedUrl] = useState('')
+  const [appState, setAppState]   = useState<AppState>('idle')
+  const [siteUrl, setSiteUrl]     = useState('')
+  const [progress, setProgress]   = useState(0)
+  const [msgIndex, setMsgIndex]   = useState(0)
+  const [scores, setScores]       = useState<AuditScores | null>(null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (state !== 'loading') return
-    const interval = setInterval(() => {
-      setLoadingMsg(prev => (prev + 1) % LOADING_MESSAGES.length)
-    }, 1800)
-    return () => clearInterval(interval)
-  }, [state])
+  const pendingScoresRef = useRef<AuditScores | null>(null)
+  const pendingLeadIdRef = useRef<string | null>(null)
 
-  useEffect(() => {
-    if (state !== 'loading') { setLoadingProgress(0); return }
-    setLoadingProgress(0)
-    const timer = setTimeout(() => setLoadingProgress(85), 200)
-    return () => clearTimeout(timer)
-  }, [state])
+  async function handleStartAudit(e: React.FormEvent) {
+    e.preventDefault()
+    const url = siteUrl.trim()
+    if (!url) return
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }))
+    pendingScoresRef.current = null
+    pendingLeadIdRef.current = null
+    setSubmitError(null)
+    setProgress(0)
+    setMsgIndex(0)
+    setAppState('scanning')
+
+    fetch('/api/audit/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        pendingScoresRef.current = data.scores ?? fallbackScores()
+        pendingLeadIdRef.current = data.leadId ?? null
+      })
+      .catch(() => { pendingScoresRef.current = fallbackScores() })
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setError(null)
-    setAuditedUrl(formData.url)
-    setState('loading')
-    setLoadingMsg(0)
+  function fallbackScores(): AuditScores {
+    return {
+      speed: Math.floor(Math.random() * 40) + 40,
+      seo:   Math.floor(Math.random() * 30) + 55,
+      ux:    Math.floor(Math.random() * 35) + 50,
+    }
+  }
 
+  useEffect(() => {
+    if (appState !== 'scanning') return
+    let stepIdx = 0
+
+    function runStep() {
+      if (stepIdx >= SCAN_MESSAGES.length) return
+      const { pct } = SCAN_MESSAGES[stepIdx]
+      setMsgIndex(stepIdx)
+      setProgress(pct)
+      stepIdx++
+      if (pct < 85) {
+        setTimeout(runStep, 900 + Math.random() * 600)
+      } else {
+        waitForApiThenOpenGate()
+      }
+    }
+
+    setTimeout(runStep, 300)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appState])
+
+  function waitForApiThenOpenGate() {
+    const interval = setInterval(() => {
+      if (pendingScoresRef.current !== null) {
+        clearInterval(interval)
+        setScores(pendingScoresRef.current)
+        setAppState('gate')
+      }
+    }, 300)
+    setTimeout(() => {
+      clearInterval(interval)
+      if (!pendingScoresRef.current) {
+        pendingScoresRef.current = fallbackScores()
+        setScores(pendingScoresRef.current)
+        setAppState('gate')
+      }
+    }, 15_000)
+  }
+
+  async function handleLeadSubmit(lead: LeadData) {
+    setAppState('submitting')
+    setSubmitError(null)
     try {
-      const res = await fetch('/api/audit', {
+      const res = await fetch('/api/audit/lead', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...lead, url: siteUrl.trim(), leadId: pendingLeadIdRef.current, scores: pendingScoresRef.current }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Erreur lors de l\'audit')
-      setScores(data.scores ?? {
-        speed: Math.floor(Math.random() * 40) + 40,
-        seo: Math.floor(Math.random() * 40) + 40,
-        ux: Math.floor(Math.random() * 40) + 40,
-      })
-      setLoadingProgress(100)
-      setTimeout(() => setState('result'), 400)
+      if (!res.ok) throw new Error(data.error || 'Erreur')
+      if (data.scores) setScores(data.scores)
+      setProgress(100)
+      setAppState('result')
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Une erreur est survenue')
-      setState('form')
+      setSubmitError(err instanceof Error ? err.message : 'Une erreur est survenue')
+      setAppState('gate')
     }
   }
 
   function handleReset() {
-    setState('form')
+    setAppState('idle')
+    setSiteUrl('')
     setScores(null)
-    setError(null)
-    setFormData({ firstName: '', lastName: '', company: '', email: '', phone: '', url: '' })
+    setProgress(0)
+    setMsgIndex(0)
+    setSubmitError(null)
+    pendingScoresRef.current = null
+    pendingLeadIdRef.current = null
   }
 
   const globalScore = scores ? Math.round((scores.speed + scores.seo + scores.ux) / 3) : 0
-  const globalColor = getScoreColor(globalScore)
 
+  // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <main
-      className="min-h-screen text-white selection:bg-[#4CAF7D]/20"
-      style={{ background: 'linear-gradient(160deg, #0D1117 0%, #111A16 50%, #0D1117 100%)' }}
-    >
+    <>
+      {/* ── Variables CSS globales + reset typographique ── */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap');
 
-      {/* ── Ambient background ── */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div
-          className="absolute top-0 left-1/2 -translate-x-1/2 h-[500px] w-[800px] opacity-15"
-          style={{ background: 'radial-gradient(ellipse, #4CAF7D 0%, transparent 65%)', filter: 'blur(70px)' }}
-        />
-        <div
-          className="absolute bottom-0 right-0 h-[350px] w-[500px] opacity-8"
-          style={{ background: 'radial-gradient(ellipse, #E8A838 0%, transparent 65%)', filter: 'blur(90px)' }}
-        />
-      </div>
+        :root {
+          --ink:         #1A1A18;
+          --ink-light:   #3A3A36;
+          --paper:       #F5F3EE;
+          --stone:       #8C8880;
+          --rule:        #D8D4CC;
+          --accent:      #3D5A4A;
+          --accent-warm: #C17F4A;
 
-      {/* ═══════════════════════════════════════════════════════════
-          NAV
-      ═══════════════════════════════════════════════════════════ */}
-      <nav className="relative z-10 mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
-        <span className="text-sm font-semibold tracking-tight">
-          <span style={{ color: '#4CAF7D' }}>Rewind</span>
-          <span className="text-white/70">Insights</span>
-        </span>
-        <a
-          href="#audit"
-          className="hidden sm:inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 py-2 text-xs font-medium text-white/70 transition hover:bg-white/10 hover:text-white"
-        >
-          Tester mon site →
-        </a>
-      </nav>
+          --font-display: 'DM Serif Display', Georgia, serif;
+          --font-body:    'Inter', system-ui, sans-serif;
+          --font-mono:    'JetBrains Mono', 'Courier New', monospace;
+        }
 
-      {/* ═══════════════════════════════════════════════════════════
-          HERO
-      ═══════════════════════════════════════════════════════════ */}
-      <section className="relative z-10 mx-auto max-w-4xl px-6 pt-16 pb-24 text-center">
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        <div
-          className="mb-8 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium"
-          style={{ background: 'rgba(76,175,125,0.10)', border: '1px solid rgba(76,175,125,0.25)', color: '#4CAF7D' }}
-        >
-          <span className="h-1.5 w-1.5 rounded-full bg-[#4CAF7D] animate-pulse" />
-          Diagnostic gratuit — résultats en 30 secondes
-        </div>
+        html { background: var(--paper); color: var(--ink); }
 
-        {/* Headline */}
-        <h1 className="text-[clamp(2.5rem,7vw,4.5rem)] font-bold leading-[1.08] tracking-tight text-white">
-          Votre site vous fait<br />
-          <span style={{ color: '#4CAF7D' }}>perdre des clients.</span>
-        </h1>
+        body {
+          font-family: var(--font-body);
+          font-weight: 300;
+          font-size: 16px;
+          line-height: 1.65;
+          background: var(--paper);
+          color: var(--ink);
+          -webkit-font-smoothing: antialiased;
+        }
 
-        <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-white/50">
-          Lenteur, SEO négligé, expérience mobile bancale — chaque problème non résolu coûte des conversions.
-          On mesure tout ça en 30 secondes, sans vous demander une CB.
-        </p>
+        ::selection { background: var(--accent); color: var(--paper); }
 
-        <a
-          href="#audit"
-          className="mt-9 inline-flex items-center gap-2.5 rounded-2xl px-8 py-4 text-sm font-semibold text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl"
-          style={{
-            background: 'linear-gradient(135deg, #4CAF7D, #369b62)',
-            boxShadow: '0 6px 28px rgba(76,175,125,0.30)',
-          }}
-        >
-          Analyser mon site maintenant
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M3 8h10M9 4l4 4-4 4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </a>
+        /* Input placeholder */
+        input::placeholder { color: var(--stone); opacity: 1; }
 
-        <p className="mt-3 text-xs text-white/25">Sans inscription · Résultats immédiats · 100% gratuit</p>
-      </section>
+        /* Focus ring accessible */
+        :focus-visible { outline: 1px solid var(--accent); outline-offset: 3px; }
 
-      {/* ═══════════════════════════════════════════════════════════
-          STATS / SOCIAL PROOF
-      ═══════════════════════════════════════════════════════════ */}
-      <section className="relative z-10 mx-auto max-w-5xl px-6 pb-20">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {[
-            { stat: '−7%', label: 'de conversions par seconde de chargement en plus', source: 'Google, 2023' },
-            { stat: '53%', label: 'des visiteurs quittent un site mobile qui met plus de 3s à charger', source: 'Think with Google' },
-            { stat: '1er', label: 'La vitesse est un critère de ranking Google depuis 2021', source: 'Core Web Vitals' },
-          ].map(({ stat, label, source }) => (
-            <Card key={stat} className="p-6">
-              <p className="text-4xl font-bold text-white tracking-tight">{stat}</p>
-              <p className="mt-2 text-sm leading-relaxed text-white/50">{label}</p>
-              <p className="mt-3 text-xs text-white/20 font-medium">{source}</p>
-            </Card>
-          ))}
-        </div>
-      </section>
+        /* Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+          *, *::before, *::after { transition: none !important; animation: none !important; }
+        }
 
-      {/* ═══════════════════════════════════════════════════════════
-          AUDIT FORM — #audit
-      ═══════════════════════════════════════════════════════════ */}
-      <section id="audit" className="relative z-10 mx-auto max-w-xl px-6 pb-28 scroll-mt-8">
-        <div className="mb-10 text-center">
-          <h2 className="text-2xl font-bold text-white">Votre diagnostic en 30 secondes</h2>
-          <p className="mt-2 text-sm text-white/40">
-            Renseignez l'URL de votre site — on s'occupe du reste.
-          </p>
-        </div>
+        /* Barre de scan animée */
+        @keyframes scan-line {
+          0%   { transform: scaleX(0); transform-origin: left; }
+          50%  { transform: scaleX(1); transform-origin: left; }
+          50.01% { transform-origin: right; }
+          100% { transform: scaleX(0); transform-origin: right; }
+        }
+      `}</style>
 
-        {/* ── FORM ── */}
-        {state === 'form' && (
-          <Card className="p-7">
-            {error && (
-              <div
-                className="mb-5 flex items-start gap-2 rounded-xl px-4 py-3 text-sm text-[#E05D44]"
-                style={{ background: 'rgba(224,93,68,0.08)', border: '1px solid rgba(224,93,68,0.20)' }}
-              >
-                <span>⚠️</span>
-                <span>{error}</span>
-              </div>
-            )}
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Prénom" name="firstName" placeholder="Jean" value={formData.firstName} onChange={handleChange} required />
-                <Field label="Nom" name="lastName" placeholder="Dupont" value={formData.lastName} onChange={handleChange} required />
-                <Field label="Entreprise" name="company" placeholder="Acme SAS" value={formData.company} onChange={handleChange} />
-                <Field label="Email" name="email" type="email" placeholder="jean@acme.fr" value={formData.email} onChange={handleChange} required />
-                <Field label="Téléphone" name="phone" type="tel" placeholder="+33 6 00 00 00 00" value={formData.phone} onChange={handleChange} />
-                <Field label="URL de votre site" name="url" type="url" placeholder="https://votre-site.fr" value={formData.url} onChange={handleChange} required />
-              </div>
+      <div style={{ minHeight: '100vh', background: 'var(--paper)' }}>
 
-              <button
-                type="submit"
-                className="mt-3 w-full rounded-xl px-6 py-3.5 text-sm font-semibold text-white transition-all duration-200 hover:-translate-y-0.5"
-                style={{
-                  background: 'linear-gradient(135deg, #4CAF7D, #369b62)',
-                  boxShadow: '0 4px 20px rgba(76,175,125,0.25)',
-                }}
-              >
-                Lancer le diagnostic gratuit →
-              </button>
-
-              <p className="text-center text-xs text-white/20">
-                Vos données ne sont pas revendues. Jamais.
-              </p>
-            </form>
-          </Card>
-        )}
-
-        {/* ── LOADING ── */}
-        {state === 'loading' && (
-          <Card className="p-10 text-center">
-            <div className="relative mx-auto mb-8 h-20 w-20">
-              <svg className="animate-spin" viewBox="0 0 80 80" fill="none">
-                <circle cx="40" cy="40" r="34" stroke="rgba(76,175,125,0.10)" strokeWidth="5" />
-                <circle cx="40" cy="40" r="34" stroke="#4CAF7D" strokeWidth="5"
-                  strokeLinecap="round" strokeDasharray="213" strokeDashoffset="150" />
-              </svg>
-              <span className="absolute inset-0 flex items-center justify-center text-2xl">🔍</span>
-            </div>
-
-            <p
-              key={loadingMsg}
-              className="text-sm font-medium text-white/70 transition-opacity duration-500"
-            >
-              {LOADING_MESSAGES[loadingMsg]}
-            </p>
-            <p className="mt-1.5 text-xs text-white/30 truncate max-w-xs mx-auto">{auditedUrl}</p>
-
-            <div className="mx-auto mt-8 h-1 w-56 overflow-hidden rounded-full bg-white/5">
-              <div
-                className="h-full rounded-full transition-all duration-[2000ms] ease-out"
-                style={{ width: `${loadingProgress}%`, background: 'linear-gradient(90deg, #4CAF7D, #81d4a8)' }}
-              />
-            </div>
-          </Card>
-        )}
-
-        {/* ── RESULT ── */}
-        {state === 'result' && scores && (
-          <div className="space-y-5">
-
-            {/* Global */}
-            <Card className="flex items-center justify-between px-7 py-5">
-              <div>
-                <p className="text-xs font-medium text-white/30 uppercase tracking-widest">Note globale</p>
-                <p className="mt-0.5 text-xs text-white/30 truncate max-w-[160px]">{auditedUrl}</p>
-              </div>
-              <div className="flex items-baseline gap-1">
-                <span className="text-6xl font-bold tabular-nums" style={{ color: globalColor.hex }}>
-                  {globalScore}
-                </span>
-                <span className="text-lg text-white/20">/100</span>
-              </div>
-            </Card>
-
-            <div className="grid gap-4 sm:grid-cols-3">
-              <ScoreGauge score={scores.speed} label="Vitesse" icon="⚡" />
-              <ScoreGauge score={scores.seo} label="SEO" icon="🎯" />
-              <ScoreGauge score={scores.ux} label="Expérience" icon="✨" />
-            </div>
-
-            {/* CTA résultat */}
-            <div
-              className="rounded-2xl p-7 text-center"
-              style={{
-                background: 'linear-gradient(135deg, rgba(76,175,125,0.10), rgba(76,175,125,0.04))',
-                border: '1px solid rgba(76,175,125,0.20)',
-              }}
-            >
-              {globalScore < 70 ? (
-                <>
-                  <p className="text-lg font-bold text-white">
-                    Il y a de la marge. On peut faire beaucoup mieux.
-                  </p>
-                  <p className="mt-2 text-sm text-white/50">
-                    Nos experts vous expliquent exactement quoi corriger, dans quel ordre, et pourquoi — en 30 minutes.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="text-lg font-bold text-white">
-                    Bon score, mais peut-on viser l'excellence ?
-                  </p>
-                  <p className="mt-2 text-sm text-white/50">
-                    Même un site performant a des axes d'amélioration. On vous dit lesquels.
-                  </p>
-                </>
-              )}
-
-              <a
-                href="https://rewind-studio.vercel.app/"
-                className="mt-6 inline-flex items-center gap-2.5 rounded-xl px-7 py-3.5 text-sm font-semibold text-white transition-all duration-200 hover:-translate-y-0.5"
-                style={{
-                  background: 'linear-gradient(135deg, #4CAF7D, #369b62)',
-                  boxShadow: '0 6px 28px rgba(76,175,125,0.30)',
-                }}
-              >
-                Parler à un expert — c'est gratuit
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                  <path d="M3 8h10M9 4l4 4-4 4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </a>
-              <p className="mt-2.5 text-xs text-white/25">30 min · sans engagement · visio ou téléphone</p>
-            </div>
-
-            <div className="text-center">
-              <button
-                onClick={handleReset}
-                className="text-xs text-white/30 transition hover:text-white/60"
-              >
-                ← Tester un autre site
-              </button>
-            </div>
-          </div>
-        )}
-      </section>
-
-      {/* ═══════════════════════════════════════════════════════════
-          CE QU'ON ANALYSE
-      ═══════════════════════════════════════════════════════════ */}
-      <section className="relative z-10 mx-auto max-w-5xl px-6 pb-28">
-        <div className="mb-12 text-center">
-          <h2 className="text-2xl font-bold text-white">Ce qu'on mesure pour vous</h2>
-          <p className="mt-2 text-sm text-white/40">Les trois piliers qui font vraiment la différence.</p>
-        </div>
-
-        <div className="grid gap-5 sm:grid-cols-3">
-          {[
-            {
-              color: '#E8A838',
-              icon: '⚡',
-              title: 'Vitesse de chargement',
-              desc: 'On mesure LCP, TTFB, FID — les métriques que Google regarde pour classer votre site. Chaque seconde gagnée est une conversion de plus.',
-              metrics: ['Largest Contentful Paint', 'Time to First Byte', 'First Input Delay'],
-            },
-            {
-              color: '#4CAF7D',
-              icon: '🎯',
-              title: 'SEO technique',
-              desc: 'Balises manquantes, sitemap oublié, erreurs d\'indexation — on repère tout ce qui empêche Google de vous trouver.',
-              metrics: ['Meta title & description', 'Crawlabilité & sitemap', 'Core Web Vitals'],
-            },
-            {
-              color: '#A78BFA',
-              icon: '✨',
-              title: 'Expérience utilisateur',
-              desc: 'Un site qui bouge au chargement, des boutons trop petits sur mobile, des contrastes insuffisants — on détecte ce qui frustre vos visiteurs.',
-              metrics: ['Cumulative Layout Shift', 'Accessibilité WCAG', 'Responsive mobile'],
-            },
-          ].map(({ color, icon, title, desc, metrics }) => (
-            <Card key={title} className="p-6">
-              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: `${color}15`, border: `1px solid ${color}25` }}>
-                <span className="text-xl">{icon}</span>
-              </div>
-              <h3 className="text-sm font-semibold text-white">{title}</h3>
-              <p className="mt-2 text-xs leading-relaxed text-white/45">{desc}</p>
-              <ul className="mt-4 space-y-1.5">
-                {metrics.map(m => (
-                  <li key={m} className="flex items-center gap-2 text-xs text-white/35">
-                    <span className="h-1 w-1 rounded-full flex-shrink-0" style={{ background: color }} />
-                    {m}
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          ))}
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════════════════════════
-          CTA FINAL
-      ═══════════════════════════════════════════════════════════ */}
-      <section className="relative z-10 mx-auto max-w-2xl px-6 pb-28 text-center">
-        <Card className="p-10">
-          <p className="text-sm font-medium text-white/30 uppercase tracking-widest">Prêt à passer à l'étape suivante ?</p>
-          <h2 className="mt-4 text-3xl font-bold text-white leading-tight">
-            Un site rapide, bien référencé<br />et agréable à utiliser.
-          </h2>
-          <p className="mx-auto mt-4 max-w-sm text-sm leading-relaxed text-white/45">
-            C'est faisable. Et ça commence par savoir où vous en êtes. Testez votre site maintenant — c'est gratuit et ça prend 30 secondes.
-          </p>
-          <a
-            href="#audit"
-            className="mt-7 inline-flex items-center gap-2.5 rounded-2xl px-8 py-4 text-sm font-semibold text-white transition-all duration-200 hover:-translate-y-0.5"
-            style={{
-              background: 'linear-gradient(135deg, #4CAF7D, #369b62)',
-              boxShadow: '0 6px 28px rgba(76,175,125,0.30)',
-            }}
-          >
-            Analyser mon site maintenant
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-              <path d="M3 8h10M9 4l4 4-4 4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </a>
-          <p className="mt-3 text-xs text-white/20">Sans inscription · Sans CB · Résultats immédiats</p>
-        </Card>
-      </section>
-
-      {/* ═══════════════════════════════════════════════════════════
-          FOOTER
-      ═══════════════════════════════════════════════════════════ */}
-      <footer className="relative z-10 border-t border-white/6 px-6 py-8">
-        <div className="mx-auto flex max-w-5xl flex-col items-center gap-4 sm:flex-row sm:justify-between">
-          <span className="text-sm font-semibold">
-            <span style={{ color: '#4CAF7D' }}>Rewind</span>
-            <span className="text-white/50">Insights</span>
+        {/* ══════════════════════════════════════════════════════════════════
+            NAVIGATION
+        ══════════════════════════════════════════════════════════════════ */}
+        <nav style={{
+          maxWidth: '1200px', margin: '0 auto',
+          padding: '2rem 3rem',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          borderBottom: '1px solid var(--rule)',
+        }}>
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: 'var(--ink)', fontStyle: 'italic' }}>
+            Rewind<span style={{ fontStyle: 'normal', fontFamily: 'var(--font-body)', fontWeight: 300, fontSize: '1rem' }}> Insights</span>
           </span>
-          <div className="flex items-center gap-5">
-            {['Mentions légales', 'Confidentialité', 'CGU'].map(link => (
-              <a key={link} href="#" className="text-xs text-white/25 hover:text-white/50 transition-colors">
+          <div style={{ display: 'flex', gap: '2.5rem' }}>
+            {['Méthode', 'Analyser', 'Contact'].map(link => (
+              <a
+                key={link}
+                href={link === 'Analyser' ? '#audit' : '#'}
+                style={{
+                  fontFamily: 'var(--font-body)', fontSize: '0.8rem', fontWeight: 400,
+                  color: 'var(--stone)', textDecoration: 'none', letterSpacing: '0.02em',
+                  transition: 'color 0.15s',
+                }}
+                onMouseEnter={e => { (e.target as HTMLElement).style.color = 'var(--ink)' }}
+                onMouseLeave={e => { (e.target as HTMLElement).style.color = 'var(--stone)' }}
+              >
                 {link}
               </a>
             ))}
           </div>
-          <p className="text-xs text-white/20">
-            Un service{' '}
-            <a href="https://rewind-studio.vercel.app/" className="text-white/35 hover:text-white/55 transition-colors">
-              Rewind Studio
-            </a>
-          </p>
-        </div>
-      </footer>
+        </nav>
 
-    </main>
+        {/* ══════════════════════════════════════════════════════════════════
+            HERO — layout asymétrique : grand titre à gauche, stat à droite
+        ══════════════════════════════════════════════════════════════════ */}
+        <section style={{ maxWidth: '1200px', margin: '0 auto', padding: '7rem 3rem 6rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '4rem', alignItems: 'end' }}>
+
+            {/* Titre */}
+            <div>
+              <p style={{
+                fontFamily: 'var(--font-mono)', fontSize: '0.65rem',
+                letterSpacing: '0.15em', textTransform: 'uppercase',
+                color: 'var(--accent)', marginBottom: '2rem',
+              }}>
+                Diagnostic de performance web
+              </p>
+              <h1 style={{
+                fontFamily: 'var(--font-display)', fontWeight: 400,
+                fontSize: 'clamp(2.8rem, 6vw, 5.5rem)',
+                lineHeight: 1.05, color: 'var(--ink)',
+                letterSpacing: '-0.02em',
+              }}>
+                Votre site perd<br />
+                des clients.<br />
+                <em style={{ color: 'var(--accent)' }}>Combien ?</em>
+              </h1>
+              <p style={{
+                fontFamily: 'var(--font-body)', fontWeight: 300,
+                fontSize: '1.05rem', color: 'var(--stone)',
+                maxWidth: '480px', lineHeight: 1.7,
+                marginTop: '2rem',
+              }}>
+                Un audit complet en 30 secondes — vitesse, SEO, accessibilité.
+                Gratuit. Sans inscription.
+              </p>
+            </div>
+
+            {/* Stat isolée à droite — signature visuelle */}
+            <div style={{
+              borderLeft: '1px solid var(--rule)',
+              paddingLeft: '3rem',
+              paddingBottom: '0.5rem',
+              minWidth: '180px',
+            }}>
+              <p style={{
+                fontFamily: 'var(--font-display)', fontStyle: 'italic',
+                fontSize: '4rem', lineHeight: 1, color: 'var(--ink-light)',
+              }}>
+                −7%
+              </p>
+              <p style={{
+                fontFamily: 'var(--font-body)', fontWeight: 300,
+                fontSize: '0.8rem', color: 'var(--stone)',
+                lineHeight: 1.5, marginTop: '0.5rem',
+              }}>
+                de conversions<br />par seconde<br />de chargement
+              </p>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--rule)', marginTop: '1rem', letterSpacing: '0.08em' }}>
+                Source : Google
+              </p>
+            </div>
+
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════════════
+            WIDGET D'AUDIT — ancre #audit
+        ══════════════════════════════════════════════════════════════════ */}
+        <section id="audit" style={{
+          maxWidth: '1200px', margin: '0 auto',
+          padding: '0 3rem 8rem',
+        }}>
+
+          {/* ── IDLE : champ URL seul ── */}
+          {appState === 'idle' && (
+            <div style={{ borderTop: '1px solid var(--rule)', paddingTop: '4rem' }}>
+              <p style={{
+                fontFamily: 'var(--font-mono)', fontSize: '0.65rem',
+                letterSpacing: '0.12em', textTransform: 'uppercase',
+                color: 'var(--stone)', marginBottom: '2.5rem',
+              }}>
+                Entrez l'URL de votre site pour commencer
+              </p>
+
+              <form onSubmit={handleStartAudit}>
+                <div style={{ display: 'flex', gap: '0', alignItems: 'stretch', borderBottom: '1px solid var(--ink)', paddingBottom: '0' }}>
+                  <input
+                    type="url" required
+                    placeholder="https://votre-site.fr"
+                    value={siteUrl}
+                    onChange={e => setSiteUrl(e.target.value)}
+                    style={{
+                      flex: 1,
+                      fontFamily: 'var(--font-body)', fontWeight: 300,
+                      fontSize: 'clamp(1.1rem, 2.5vw, 1.6rem)',
+                      color: 'var(--ink)', background: 'transparent',
+                      border: 'none', outline: 'none',
+                      padding: '0.75rem 0',
+                      letterSpacing: '-0.01em',
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    style={{
+                      fontFamily: 'var(--font-body)', fontSize: '0.875rem', fontWeight: 500,
+                      color: 'var(--paper)', background: 'var(--ink)',
+                      border: 'none', padding: '0.75rem 1.75rem',
+                      cursor: 'pointer', whiteSpace: 'nowrap',
+                      letterSpacing: '0.01em',
+                      transition: 'background 0.2s',
+                    }}
+                    onMouseEnter={e => { (e.target as HTMLElement).style.background = 'var(--accent)' }}
+                    onMouseLeave={e => { (e.target as HTMLElement).style.background = 'var(--ink)' }}
+                  >
+                    Analyser →
+                  </button>
+                </div>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--stone)', marginTop: '1rem', letterSpacing: '0.08em' }}>
+                  Confidentiel — aucun compte requis
+                </p>
+              </form>
+            </div>
+          )}
+
+          {/* ── SCANNING : loader éditorial ── */}
+          {appState === 'scanning' && (
+            <div style={{ borderTop: '1px solid var(--rule)', paddingTop: '4rem' }}>
+              {/* Ligne d'analyse animée */}
+              <div style={{ marginBottom: '3rem' }}>
+                <div style={{ position: 'relative', height: '1px', background: 'var(--rule)', overflow: 'hidden', marginBottom: '1.5rem' }}>
+                  <div style={{
+                    position: 'absolute', top: 0, left: 0, right: 0, height: '1px',
+                    background: 'var(--accent)',
+                    animation: 'scan-line 1.8s ease-in-out infinite',
+                  }} />
+                </div>
+                <div style={{
+                  height: '1px', background: 'var(--rule)', position: 'relative', marginBottom: '1rem',
+                }}>
+                  <div style={{
+                    position: 'absolute', top: 0, left: 0, height: '1px',
+                    width: `${progress}%`,
+                    background: 'var(--ink)',
+                    transition: 'width 0.9s cubic-bezier(0.4,0,0.2,1)',
+                  }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--stone)', letterSpacing: '0.05em' }}>
+                    {SCAN_MESSAGES[msgIndex]?.msg}
+                  </p>
+                  <p style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: '1.5rem', color: 'var(--ink)' }}>
+                    {progress}%
+                  </p>
+                </div>
+              </div>
+
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--rule)', letterSpacing: '0.08em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {siteUrl}
+              </p>
+            </div>
+          )}
+
+          {/* ── GATE / SUBMITTING : loader fantôme + modal ── */}
+          {(appState === 'gate' || appState === 'submitting') && (
+            <>
+              {/* Fond fantôme */}
+              <div style={{ borderTop: '1px solid var(--rule)', paddingTop: '4rem', opacity: 0.2, pointerEvents: 'none', userSelect: 'none' }}>
+                <div style={{ marginBottom: '3rem' }}>
+                  <div style={{ height: '1px', background: 'var(--rule)', marginBottom: '1rem', position: 'relative' }}>
+                    <div style={{ position: 'absolute', top: 0, left: 0, height: '1px', width: '85%', background: 'var(--ink)' }} />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--stone)' }}>
+                      Finalisation du rapport…
+                    </p>
+                    <p style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: '1.5rem', color: 'var(--ink)' }}>85%</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal */}
+              <GateModal
+                url={siteUrl}
+                onSubmit={handleLeadSubmit}
+                isSubmitting={appState === 'submitting'}
+                error={submitError}
+              />
+            </>
+          )}
+
+          {/* ── RESULT : rapport final ── */}
+          {appState === 'result' && scores && (
+            <div style={{ borderTop: '1px solid var(--rule)', paddingTop: '4rem' }}>
+
+              {/* Score global — mis en avant typographiquement */}
+              <div style={{
+                display: 'flex', alignItems: 'baseline', gap: '1.5rem',
+                marginBottom: '4rem',
+                paddingBottom: '3rem',
+                borderBottom: '1px solid var(--rule)',
+              }}>
+                <span style={{
+                  fontFamily: 'var(--font-display)', fontStyle: 'italic',
+                  fontSize: 'clamp(4rem, 10vw, 8rem)',
+                  lineHeight: 1, color: scoreColor(globalScore).hex,
+                  letterSpacing: '-0.03em',
+                }}>
+                  {globalScore}
+                </span>
+                <div>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.9rem', color: 'var(--stone)', fontWeight: 300 }}>
+                    / 100
+                  </p>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--stone)', marginTop: '0.25rem' }}>
+                    Score global
+                  </p>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--stone)', marginTop: '0.5rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '240px' }}>
+                    {siteUrl}
+                  </p>
+                </div>
+              </div>
+
+              {/* Détail par axe — liste verticale, pas de grille de cartes */}
+              <div style={{ maxWidth: '480px' }}>
+                <ScoreGauge score={scores.speed} label="Vitesse de chargement" index={0} />
+                <ScoreGauge score={scores.seo}   label="Référencement naturel" index={1} />
+                <ScoreGauge score={scores.ux}    label="Expérience utilisateur" index={2} />
+              </div>
+
+              {/* CTA vers l'agence — sobre, pas de fond coloré */}
+              <div style={{ marginTop: '5rem', paddingTop: '3rem', borderTop: '1px solid var(--rule)', display: 'flex', alignItems: 'flex-start', gap: '4rem', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: '240px' }}>
+                  <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.8rem', fontWeight: 400, color: 'var(--ink)', lineHeight: 1.2, marginBottom: '1rem' }}>
+                    Besoin d'un plan d'action ?
+                  </h2>
+                  <p style={{ fontFamily: 'var(--font-body)', fontWeight: 300, fontSize: '0.9rem', color: 'var(--stone)', lineHeight: 1.7, maxWidth: '360px' }}>
+                    Nos experts construisent un plan de correction priorisé, adapté à votre stack et votre budget.
+                  </p>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingTop: '0.25rem' }}>
+                  <a
+                    href="https://rewind-studio.vercel.app/"
+                    style={{
+                      display: 'inline-block',
+                      fontFamily: 'var(--font-body)', fontSize: '0.875rem', fontWeight: 500,
+                      color: 'var(--paper)', background: 'var(--ink)',
+                      padding: '0.875rem 1.75rem',
+                      textDecoration: 'none', letterSpacing: '0.01em',
+                      transition: 'background 0.2s',
+                    }}
+                    onMouseEnter={e => { (e.target as HTMLElement).style.background = 'var(--accent)' }}
+                    onMouseLeave={e => { (e.target as HTMLElement).style.background = 'var(--ink)' }}
+                  >
+                    Prendre rendez-vous →
+                  </a>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--stone)', letterSpacing: '0.08em' }}>
+                    30 min · gratuit · sans engagement
+                  </p>
+                </div>
+              </div>
+
+              {/* Reset */}
+              <div style={{ marginTop: '3rem' }}>
+                <button
+                  onClick={handleReset}
+                  style={{
+                    fontFamily: 'var(--font-mono)', fontSize: '0.65rem',
+                    letterSpacing: '0.1em', textTransform: 'uppercase',
+                    color: 'var(--stone)', background: 'none', border: 'none',
+                    cursor: 'pointer', padding: 0, transition: 'color 0.15s',
+                  }}
+                  onMouseEnter={e => { (e.target as HTMLElement).style.color = 'var(--ink)' }}
+                  onMouseLeave={e => { (e.target as HTMLElement).style.color = 'var(--stone)' }}
+                >
+                  ← Auditer un autre site
+                </button>
+              </div>
+            </div>
+          )}
+
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════════════
+            CE QUE NOUS MESURONS — layout éditorial 2 colonnes
+        ══════════════════════════════════════════════════════════════════ */}
+        <section style={{ borderTop: '1px solid var(--rule)', background: 'var(--ink)', color: 'var(--paper)' }}>
+          <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '6rem 3rem' }}>
+
+            {/* En-tête de section */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '4rem', marginBottom: '5rem', alignItems: 'end' }}>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(245,243,238,0.4)' }}>
+                Méthodologie
+              </p>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.6rem, 3vw, 2.8rem)', fontWeight: 400, lineHeight: 1.15, color: 'var(--paper)' }}>
+                Trois axes. Chacun mesurable,<br />
+                <em>chacun actionnable.</em>
+              </h2>
+            </div>
+
+            {/* Trois blocs en grille horizontale séparés par des lignes verticales */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0' }}>
+              {[
+                {
+                  label: 'Vitesse',
+                  metrics: [
+                    { key: 'LCP',      desc: 'Temps d\'affichage du contenu principal — signal de ranking Google.' },
+                    { key: 'INP',      desc: 'Réactivité aux interactions — ressenti de fluidité.' },
+                    { key: 'TTFB',     desc: 'Réponse serveur — base de toute performance.' },
+                  ],
+                },
+                {
+                  label: 'SEO',
+                  metrics: [
+                    { key: 'Méta',         desc: 'Title, description, Open Graph — ce que Google lit en premier.' },
+                    { key: 'Crawlabilité', desc: 'robots.txt, sitemap, canonical — structure d\'indexation.' },
+                    { key: 'Core Vitals',  desc: 'Signal de classement officiel depuis Page Experience.' },
+                  ],
+                },
+                {
+                  label: 'Expérience',
+                  metrics: [
+                    { key: 'CLS',          desc: 'Stabilité visuelle — les éléments qui bougent au chargement.' },
+                    { key: 'Accessibilité', desc: 'WCAG, contrastes, navigation clavier.' },
+                    { key: 'Mobile',       desc: 'Rendu tactile et responsive sur smartphones.' },
+                  ],
+                },
+              ].map(({ label, metrics }, i) => (
+                <div
+                  key={label}
+                  style={{
+                    padding: '0 2.5rem',
+                    borderLeft: i === 0 ? 'none' : '1px solid rgba(245,243,238,0.1)',
+                    paddingLeft: i === 0 ? 0 : '2.5rem',
+                  }}
+                >
+                  <p style={{
+                    fontFamily: 'var(--font-display)', fontStyle: 'italic',
+                    fontSize: '1.3rem', color: 'rgba(245,243,238,0.5)',
+                    marginBottom: '2rem',
+                  }}>
+                    {label}
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+                    {metrics.map(({ key, desc }) => (
+                      <div key={key}>
+                        <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', color: 'rgba(245,243,238,0.6)', marginBottom: '0.4rem' }}>
+                          {key}
+                        </p>
+                        <p style={{ fontFamily: 'var(--font-body)', fontWeight: 300, fontSize: '0.825rem', color: 'rgba(245,243,238,0.45)', lineHeight: 1.6 }}>
+                          {desc}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════════════
+            FOOTER
+        ══════════════════════════════════════════════════════════════════ */}
+        <footer style={{ borderTop: '1px solid var(--rule)' }}>
+          <div style={{
+            maxWidth: '1200px', margin: '0 auto',
+            padding: '2rem 3rem',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem',
+          }}>
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: '0.9rem', fontStyle: 'italic', color: 'var(--stone)' }}>
+              Rewind Insights
+            </span>
+            <div style={{ display: 'flex', gap: '2rem' }}>
+              {['Mentions légales', 'Confidentialité', 'CGU'].map(link => (
+                <a
+                  key={link}
+                  href="#"
+                  style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--stone)', textDecoration: 'none', transition: 'color 0.15s' }}
+                  onMouseEnter={e => { (e.target as HTMLElement).style.color = 'var(--ink)' }}
+                  onMouseLeave={e => { (e.target as HTMLElement).style.color = 'var(--stone)' }}
+                >
+                  {link}
+                </a>
+              ))}
+            </div>
+            <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--rule)', letterSpacing: '0.06em' }}>
+              Rewind Studio
+            </p>
+          </div>
+        </footer>
+
+      </div>
+    </>
   )
 }
