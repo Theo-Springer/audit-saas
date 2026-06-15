@@ -85,30 +85,30 @@ export async function POST(request: Request) {
 
     // ── 3. Insertion Supabase NON-BLOQUANTE ───────────────────────────────
     // On n'attend pas Supabase pour répondre à l'utilisateur
-  Promise.resolve(
-  supabase
-    .from('leads')
-    .insert([{
-      prenom:     firstName || null,
-      nom:        lastName  || null,
-      entreprise: company   || null,
-      email,
-      telephone:  phone     || null,
-      url_site:   url,
-      scores,
-      statut:     'done',
-    }])
-    .select('id')
-    .single()
-).then(({ data, error: sbError }) => {
-  if (sbError) {
-    console.error('[audit] Échec insertion Supabase :', sbError.message);
-  } else {
-    console.log('[audit] Lead inséré, id =', data?.id);
-  }
-}).catch((e) => {
-  console.error('[audit] Erreur réseau Supabase :', e);
-});
+    // ── 3. Insertion Supabase BLOQUANTE ──
+const { data, error: sbError } = await supabase
+  .from('leads')
+  .insert([{
+    prenom:     firstName || null,
+    nom:        lastName  || null,
+    entreprise: company   || null,
+    email,
+    telephone:  phone     || null,
+    url_site:   url,
+    scores,
+    statut:     'done',
+  }])
+  .select('id')
+  .single()
+
+if (sbError) {
+  console.error('[audit] Échec insertion Supabase :', sbError.message)
+} else {
+  console.log('[audit] Lead inséré, id =', data?.id)
+}
+
+// ── 4. Réponse ──
+return NextResponse.json({ success: true, scores }, { status: 200 })
 
     // ── 4. Réponse immédiate avec les scores ──────────────────────────────
     return NextResponse.json({ success: true, scores }, { status: 200 });
