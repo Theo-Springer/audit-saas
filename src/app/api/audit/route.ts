@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     if (!url)   return NextResponse.json({ error: 'Champ "url" manquant' },   { status: 400 });
     if (!email) return NextResponse.json({ error: 'Champ "email" manquant' }, { status: 400 });
 
-    // ── 2. Calcul des scores PageSpeed (avant insertion) ──────────────────
+    // ── 2. Calcul des scores PageSpeed ────────────────────────────────────
     const PAGESPEED_KEY = process.env.PAGESPEED_API_KEY;
     let scores = { speed: 0, seo: 0, ux: 0 };
 
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
         if (!psRes.ok) {
           const raw = await psRes.text();
           return NextResponse.json({
-            error:         'PageSpeed API a répondu avec une erreur HTTP',
+            error:         'PageSpeed API erreur HTTP',
             http_status:   psRes.status,
             response_body: raw.slice(0, 600),
           }, { status: 500 });
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
 
         if (!cats) {
           return NextResponse.json({
-            error: 'Réponse PageSpeed inattendue : pas de lighthouseResult.categories',
+            error: 'Réponse PageSpeed inattendue',
             raw:   JSON.stringify(psData).slice(0, 600),
           }, { status: 500 });
         }
@@ -77,59 +77,48 @@ export async function POST(request: Request) {
 
       } catch (e) {
         return NextResponse.json(
-          { error: "Erreur réseau lors de l'appel PageSpeed", detail: String(e) },
+          { error: "Erreur réseau PageSpeed", detail: String(e) },
           { status: 500 }
         );
       }
     }
 
-    // ── 3. Insertion du lead + scores en une seule fois dans Supabase ─────
-    let leadId: string | null = null;
-    try {
-      const { data, error: sbError } = await supabase
-        .from('leads')
-        .insert([{
-          prenom:     firstName || null,
-          nom:        lastName  || null,
-          entreprise: company   || null,
-          email,
-          telephone:  phone     || null,
-          url_site:   url,
-          scores,
-          statut:     'done',
-        }])
-        .select('id')
-        .single();
+    // ── 3. Insertion Supabase NON-BLOQUANTE ───────────────────────────────
+    // On n'attend pas Supabase pour répondre à l'utilisateur
+    supabase
+      .from('leads')
+      .insert([{
+        prenom:     firstName || null,
+        nom:        lastName  || null,
+        entreprise: company   || null,
+        email,
+        telephone:  phone     || null,
+        url_site:   url,
+        scores,
+        statut:     'done',
+      }])
+      .select('id')
+      .single()
+      .then(({ data, error: sbError }) => {
+        if (sbError) {
+          console.error('[audit] Échec insertion Supabase (non-bloquant) :',
+            sbError.code, sbError.message, sbError.details, sbError.hint);
+        } else {
+          console.log('[audit] Lead inséré, id =', data?.id);
+        }
+      })
+      .catch((e) => {
+        console.error('[audit] Erreur réseau Supabase (non-bloquant) :', e);
+      });
 
-      if (sbError) {
-        return NextResponse.json({
-          error:            'Échec insertion Supabase',
-          supabase_code:    sbError.code,
-          supabase_message: sbError.message,
-          supabase_details: sbError.details,
-          supabase_hint:    sbError.hint,
-        }, { status: 500 });
-      }
-
-      leadId = data?.id ?? null;
-      console.log('[audit] Lead inséré avec scores, id =', leadId);
-
-    } catch (e) {
-      return NextResponse.json(
-        { error: 'Erreur réseau Supabase (client non joignable)', detail: String(e) },
-        { status: 500 }
-      );
-    }
-
-    // ── 4. Réponse finale ─────────────────────────────────────────────────
-    return NextResponse.json({ success: true, leadId, scores }, { status: 201 });
+    // ── 4. Réponse immédiate avec les scores ──────────────────────────────
+    return NextResponse.json({ success: true, scores }, { status: 200 });
 
   } catch (e: unknown) {
     const err = e instanceof Error ? e : new Error(String(e));
     return NextResponse.json({
-      error:  'Erreur critique inconnue dans la route',
+      error:  'Erreur critique',
       detail: err.message,
-      stack:  err.stack,
     }, { status: 500 });
   }
 }

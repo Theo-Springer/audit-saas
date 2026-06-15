@@ -265,7 +265,7 @@ export default function HomePage() {
     setMsgIndex(0)
     setAppState('scanning')
 
-    fetch('/api/audit/scan', {
+    fetch('/api/audit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url }),
@@ -329,7 +329,7 @@ export default function HomePage() {
     setAppState('submitting')
     setSubmitError(null)
     try {
-      const res = await fetch('/api/audit/lead', {
+      const res = await fetch('/api/audit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...lead, url: siteUrl.trim(), leadId: pendingLeadIdRef.current, scores: pendingScoresRef.current }),
