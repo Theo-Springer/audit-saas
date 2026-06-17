@@ -480,7 +480,7 @@ export default function HomePage() {
                 maxWidth: '480px', lineHeight: 1.7,
                 marginTop: '2rem',
               }}>
-                Un audit complet en 30 secondes — vitesse, SEO, accessibilité.
+                Un audit complet en 1 minute — vitesse, SEO, accessibilité.
                 Gratuit. Sans inscription.
               </p>
             </div>
