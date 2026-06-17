@@ -1,7 +1,7 @@
 // src/app/api/audit/route.ts
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { sendAuditEmail } from '@/lib/mailer'
+import { sendAuditEmail } from '@/lib/mailer';
 
 export const dynamic = 'force-dynamic';
 
