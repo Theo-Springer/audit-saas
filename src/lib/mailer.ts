@@ -133,7 +133,7 @@ function buildEmailHtml(opts: {
                   <td style="padding-bottom:28px;">
                     <p style="margin:0 0 8px;font-size:16px;color:#1a1a1a;">Bonjour ${firstName},</p>
                     <p style="margin:0;font-size:14px;color:#555;line-height:1.6;">
-                      Votre audit est prêt. Voici les résultats pour <strong>${url}</strong>, analysés en temps réel via Google PageSpeed Insights.
+                      Votre audit est prêt. Voici les résultats pour <strong>${url}</strong>, analysés en temps réel via notre outil.
                     </p>
                   </td>
                 </tr>
@@ -165,7 +165,7 @@ function buildEmailHtml(opts: {
                         <td style="padding:24px;background:#f9f9f9;border-radius:6px;text-align:center;">
                           <p style="margin:0 0 6px;font-size:16px;font-weight:600;color:#1a1a1a;">Prêt à corriger ça ?</p>
                           <p style="margin:0 0 20px;font-size:13px;color:#555;line-height:1.6;">
-                            On analyse votre site en profondeur et on vous propose un plan d'action concret.<br>30 minutes, sans engagement.
+                            On analyse votre site en profondeur et on vous propose un plan d'action concret.<br>15/20 minutes, sans engagement.
                           </p>
                           <a href="https://rewind-studio.vercel.app/"
                              style="display:inline-block;background:#2d6a4f;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:12px 28px;border-radius:6px;">
