@@ -1,6 +1,7 @@
 // src/app/api/audit/route.ts
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { sendAuditEmail } from '@/lib/mailer'
 
 export const dynamic = 'force-dynamic';
 
@@ -107,10 +108,28 @@ if (sbError) {
   console.log('[audit] Lead inséré, id =', data?.id)
 }
 
-// ── 4. Réponse ──
+// ── 5. Envoi de l'email ───────────────────────────────────────────────
+    try {
+      await sendAuditEmail({
+        firstName: firstName || 'là',
+        lastName:  lastName  || '',
+        email,
+        url,
+        scores,
+      })
+      console.log('[audit] Email envoyé à :', email)
+    } catch (e) {
+      // Non bloquant : l'audit est déjà sauvegardé, on log sans crasher
+      console.error('[audit] Échec envoi email :', e)
+    }
+
+    // ── 6. Réponse finale ─────────────────────────────────────────────────
+    return NextResponse.json({ success: true, scores }, { status: 201 })
+
+// ── 7. Réponse ──
 return NextResponse.json({ success: true, scores }, { status: 200 })
 
-    // ── 4. Réponse immédiate avec les scores ──────────────────────────────
+    // ── 8. Réponse immédiate avec les scores ──────────────────────────────
     return NextResponse.json({ success: true, scores }, { status: 200 });
 
   } catch (e: unknown) {
