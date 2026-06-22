@@ -84,7 +84,3 @@ src/
 ```
 
 ---
-
-## Auteur
-
-**Théo Springer** — [github.com/Theo-Springer](https://github.com/Theo-Springer)
