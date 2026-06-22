@@ -6,13 +6,6 @@
 
 ---
 
-## Aperçu
-
-![Résultat d'audit — score global](./docs/screenshot-score.png)
-![Détail des métriques](./docs/screenshot-detail.png)
-
----
-
 ## Fonctionnalités
 
 - **Score global /100** sur trois axes : Vitesse, SEO, Expérience utilisateur
