@@ -123,7 +123,7 @@ function InputField({
   )
 }
 
-// ─── Modal bloquant — Étape 3 ─────────────────────────────────────────────────
+// ─── Modal bloquant , Étape 3 ─────────────────────────────────────────────────
 
 function GateModal({
   url, onSubmit, isSubmitting, error,
@@ -225,7 +225,7 @@ function GateModal({
               {isSubmitting ? 'Envoi…' : 'Afficher le rapport complet'}
             </button>
             <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--stone)', textAlign: 'center', marginTop: '1rem' }}>
-              Confidentiel — aucune CB requise
+              Confidentiel , aucune CB requise
             </p>
           </div>
         </form>
@@ -450,7 +450,7 @@ export default function HomePage() {
         </nav>
 
         {/* ══════════════════════════════════════════════════════════════════
-            HERO — layout asymétrique : grand titre à gauche, stat à droite
+            HERO , layout asymétrique : grand titre à gauche, stat à droite
         ══════════════════════════════════════════════════════════════════ */}
         <section className="rw-hero" style={{ maxWidth: '1200px', margin: '0 auto', padding: '7rem 3rem 6rem' }}>
           <div className="rw-hero-grid" style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '4rem', alignItems: 'end' }}>
@@ -480,12 +480,12 @@ export default function HomePage() {
                 maxWidth: '480px', lineHeight: 1.7,
                 marginTop: '2rem',
               }}>
-                Un audit complet en 1 minute — vitesse, SEO, accessibilité.
+                Un audit complet en 1 minute | vitesse, SEO, accessibilité.
                 Gratuit. Sans inscription.
               </p>
             </div>
 
-            {/* Stat isolée à droite — signature visuelle */}
+            {/* Stat isolée à droite , signature visuelle */}
             <div className="rw-hero-stat" style={{
               borderLeft: '1px solid var(--rule)',
               paddingLeft: '3rem',
@@ -514,7 +514,7 @@ export default function HomePage() {
         </section>
 
         {/* ══════════════════════════════════════════════════════════════════
-            WIDGET D'AUDIT — ancre #audit
+            WIDGET D'AUDIT , ancre #audit
         ══════════════════════════════════════════════════════════════════ */}
         <section id="audit" className="rw-audit" style={{
           maxWidth: '1200px', margin: '0 auto',
@@ -566,7 +566,7 @@ export default function HomePage() {
                   </button>
                 </div>
                 <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--stone)', marginTop: '1rem', letterSpacing: '0.08em' }}>
-                  Confidentiel — aucun compte requis
+                  Confidentiel, aucun compte requis
                 </p>
               </form>
             </div>
@@ -642,7 +642,7 @@ export default function HomePage() {
           {appState === 'result' && scores && (
             <div style={{ borderTop: '1px solid var(--rule)', paddingTop: '4rem' }}>
 
-              {/* Score global — mis en avant typographiquement */}
+              {/* Score global , mis en avant typographiquement */}
               <div style={{
                 display: 'flex', alignItems: 'baseline', gap: '1.5rem',
                 marginBottom: '4rem',
@@ -670,14 +670,14 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Détail par axe — liste verticale, pas de grille de cartes */}
+              {/* Détail par axe , liste verticale, pas de grille de cartes */}
               <div style={{ maxWidth: '480px' }}>
                 <ScoreGauge score={scores.speed} label="Vitesse de chargement" index={0} />
                 <ScoreGauge score={scores.seo}   label="Référencement naturel" index={1} />
                 <ScoreGauge score={scores.ux}    label="Expérience utilisateur" index={2} />
               </div>
 
-              {/* CTA vers l'agence — sobre, pas de fond coloré */}
+              {/* CTA vers l'agence , sobre, pas de fond coloré */}
               <div style={{ marginTop: '5rem', paddingTop: '3rem', borderTop: '1px solid var(--rule)', display: 'flex', alignItems: 'flex-start', gap: '4rem', flexWrap: 'wrap' }}>
                 <div style={{ flex: 1, minWidth: '240px' }}>
                   <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.8rem', fontWeight: 400, color: 'var(--ink)', lineHeight: 1.2, marginBottom: '1rem' }}>
@@ -731,7 +731,7 @@ export default function HomePage() {
         </section>
 
         {/* ══════════════════════════════════════════════════════════════════
-            CE QUE NOUS MESURONS — layout éditorial 2 colonnes
+            CE QUE NOUS MESURONS , layout éditorial 2 colonnes
         ══════════════════════════════════════════════════════════════════ */}
         <section style={{ borderTop: '1px solid var(--rule)', background: 'var(--ink)', color: 'var(--paper)' }}>
           <div className="rw-method-inner" style={{ maxWidth: '1200px', margin: '0 auto', padding: '6rem 3rem' }}>
@@ -753,23 +753,23 @@ export default function HomePage() {
                 {
                   label: 'Vitesse',
                   metrics: [
-                    { key: 'LCP',      desc: 'Temps d\'affichage du contenu principal — signal de ranking Google.' },
-                    { key: 'INP',      desc: 'Réactivité aux interactions — ressenti de fluidité.' },
-                    { key: 'TTFB',     desc: 'Réponse serveur — base de toute performance.' },
+                    { key: 'LCP',      desc: 'Temps d\'affichage du contenu principal , signal de ranking Google.' },
+                    { key: 'INP',      desc: 'Réactivité aux interactions , ressenti de fluidité.' },
+                    { key: 'TTFB',     desc: 'Réponse serveur , base de toute performance.' },
                   ],
                 },
                 {
                   label: 'SEO',
                   metrics: [
-                    { key: 'Méta',         desc: 'Title, description, Open Graph — ce que Google lit en premier.' },
-                    { key: 'Crawlabilité', desc: 'robots.txt, sitemap, canonical — structure d\'indexation.' },
+                    { key: 'Méta',         desc: 'Title, description, Open Graph , ce que Google lit en premier.' },
+                    { key: 'Crawlabilité', desc: 'robots.txt, sitemap, canonical , structure d\'indexation.' },
                     { key: 'Core Vitals',  desc: 'Signal de classement officiel depuis Page Experience.' },
                   ],
                 },
                 {
                   label: 'Expérience',
                   metrics: [
-                    { key: 'CLS',          desc: 'Stabilité visuelle — les éléments qui bougent au chargement.' },
+                    { key: 'CLS',          desc: 'Stabilité visuelle , les éléments qui bougent au chargement.' },
                     { key: 'Accessibilité', desc: 'WCAG, contrastes, navigation clavier.' },
                     { key: 'Mobile',       desc: 'Rendu tactile et responsive sur smartphones.' },
                   ],

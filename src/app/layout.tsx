@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Rewind Insight",
-  description: "Auditez gratuitement votre site web — performances, SEO et expérience utilisateur.",
+  description: "Auditez gratuitement votre site web , performances, SEO et expérience utilisateur.",
 };
 
 export default function RootLayout({

@@ -189,6 +189,7 @@ function buildEmailHtml(opts: {
               </p>
               <p style="margin:6px 0 0;font-size:11px;color:#ccc;">
                 Vous recevez cet email car vous avez demandé un audit sur notre site.
+                <a href="mailto:${process.env.GMAIL_USER}?subject=D%C3%A9sinscription" style="color:#ccc;text-decoration:underline;">Se désinscrire</a>
               </p>
             </td>
           </tr>
@@ -214,9 +215,9 @@ function buildEmailText(opts: {
 
 Votre audit est prêt pour ${url}.
 
-NOTE GLOBALE : ${global}/100
+Note globale : ${global}/100
 
-VITESSE : ${scores.speed}/100 — ${scoreLabel(scores.speed)}
+Vitesse : ${scores.speed}/100 — ${scoreLabel(scores.speed)}
 ${getComment('speed', scores.speed).headline}
 ${getComment('speed', scores.speed).body}
 
@@ -224,7 +225,7 @@ SEO : ${scores.seo}/100 — ${scoreLabel(scores.seo)}
 ${getComment('seo', scores.seo).headline}
 ${getComment('seo', scores.seo).body}
 
-EXPÉRIENCE UTILISATEUR : ${scores.ux}/100 — ${scoreLabel(scores.ux)}
+Expérience utilisateur : ${scores.ux}/100 — ${scoreLabel(scores.ux)}
 ${getComment('ux', scores.ux).headline}
 ${getComment('ux', scores.ux).body}
 
@@ -238,7 +239,10 @@ Prendre rendez-vous : https://rewind-studio.vercel.app/
 
 --
 Rewind Studio
-https://rewind-studio.vercel.app/`
+https://rewind-studio.vercel.app/
+
+Vous recevez cet email car vous avez demandé un audit sur notre site.
+Pour ne plus recevoir d'emails de notre part, répondez avec "désinscription".`
 }
 
 // ─── Transporter ─────────────────────────────────────────────────────────────
@@ -262,14 +266,25 @@ export async function sendAuditEmail(opts: {
 }) {
   const { firstName, lastName, email, url, scores } = opts
   const transporter = createTransporter()
+  const sender = process.env.GMAIL_USER as string
+  const domain = sender.split('@')[1]
 
   await transporter.sendMail({
-    from: `"Rewind Insights" <${process.env.GMAIL_USER}>`,
-    replyTo: process.env.GMAIL_USER,
+    from: `"Rewind Insights" <${sender}>`,
+    replyTo: sender,
     to: `${firstName} ${lastName} <${email}>`,
-    bcc: process.env.GMAIL_USER,
+    bcc: sender,
+    envelope: {
+      from: sender,
+      to: [email, sender],
+    },
+    messageId: `<${Date.now()}.${Math.random().toString(36).slice(2)}@${domain}>`,
     subject: `Votre audit web — ${url}`,
     text: buildEmailText({ firstName, url, scores }),   // texte brut = clé anti-spam
     html: buildEmailHtml({ firstName, url, scores }),
+    headers: {
+      'List-Unsubscribe': `<mailto:${sender}?subject=D%C3%A9sinscription>`,
+      'X-Auto-Response-Suppress': 'OOF, AutoReply',
+    },
   })
 }
