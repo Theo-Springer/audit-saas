@@ -642,6 +642,13 @@ export default function HomePage() {
           {appState === 'result' && scores && (
             <div style={{ borderTop: '1px solid var(--rule)', paddingTop: '4rem' }}>
 
+              {/* Notice email envoyé */}
+              <div style={{ marginBottom: '2.5rem', borderLeft: '2px solid var(--accent)', paddingLeft: '1rem' }}>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--stone)', lineHeight: 1.6 }}>
+                  Le rapport complet vient de vous être envoyé par email. S'il n'apparaît pas dans quelques minutes, pensez à vérifier votre dossier spams / courriers indésirables.
+                </p>
+              </div>
+
               {/* Score global , mis en avant typographiquement */}
               <div style={{
                 display: 'flex', alignItems: 'baseline', gap: '1.5rem',
